@@ -1,0 +1,977 @@
+---
+title: "WRS2: A Collection of Robust Statistical Methods"
+output: 
+  learnr::tutorial:
+    progressive: TRUE
+    allow_skip: TRUE
+    df_print: "kable"
+    theme: "cerulean"
+    highlight: "haddock"
+    ace_theme: "tomorrow_night_blue"
+runtime: shiny_prerendered
+---
+
+<style type="text/css">
+  body{
+  font-size: 12pt;
+}
+</style>
+
+<style>
+    p {line-height: 2em;}
+</style>
+
+```{r setup, include=FALSE}
+library(learnr)
+library(tidyverse)
+library(tibble)
+library(knitr)
+library(jtools)
+library(gt)
+library(sn)
+library(stfspack)
+library(WRS2)
+library(effectsize)
+library(report)
+```
+
+## Introduction
+
+### Greetings
+
+\ What's happening, everyone! Today, I am here to talk (and teach) about robust statistics and the package `WRS2`.  
+
+\ For the purpose of this tutorial, you will be using a `Shiny` app that has all of the requisite packages pre-installed.  
+\ If you would like to install the packages onto your own RStudio, feel free to copy and paste the code below:  
+
+
+```{r install-packages, eval=FALSE}
+install.packages("tidyverse")
+install.packages("tibble")
+install.packages("knitr")
+install.packages("jtools")
+install.packages("gt")
+install.packages("sn")
+install.packages("remotes")
+remotes::install_github("mdedge/stfspack")
+install.packages("WRS2")
+install.packages("effectsize")
+install.packages("devtools")
+devtools::install_github("easystats/report")
+```
+
+
+![](images/thumbsup.jpg)
+
+### Definition of Robust Statistics
+
+To get started, let's talk about what the term "robust statistics" even means. There a few basic ways to understand robust statistics. Consider the following definitions:
+
+* A robust statistic is one that is resistant to bias when its assumptions are violated (Field & Wilcox, 2017);
+* Robust statistics are methods used to estimate parameters and their standard errors when the data violates traditional assumptions and/or contains outliers (Field, 2017);
+* Robust statistics are "procedures that maintain nominal Type I error rates and statistical power in the presence of violations of the assumptions that underpin parametric inferential statistics" (Blaine, 2018, p. 1434)
+
+I think we're seeing a common theme here. Let's make our own operational definition of robust statistics for this tutorial:
+
+> Robust statistics are procedures that provide us with accurate parameter/standard error estimates when classical assumptions are violated. Further, these methods do not have an impact on Type I and Type II error rates.
+
+### What are the Underlying Problems?
+
+While these definitions help us understand what robust statistics are, they also highlighted some of the underlying issues that this class of statistics is trying to solve. Let's think about some of the common themes in the aforementioned definitions:
+
+* Violations of assumptions
+* Presence of outliers
+* Type I/Type II error rates
+
+I think we can come up with a nice, concise summary of these problems and how they relate to robust statistics:
+
+> Robust statistics provide a method for solving problems related to assumption violations, outlier influence, loss of power, and the inflation of Type I error rates.
+
+A more pithy summary might be:
+
+> Robust statistics help us deal with data that is messy, crappy, and gives us headaches.
+
+![](images/crap.jpg)
+
+### What is `WRS2`?
+
+In brief, `WRS2` is a package that provides R users with a variety of functions for implementing robust statistics. This package was written by Patrick Mair and Rand Wilcox and is still regularly maintained, having been updated in February 2021.
+
+### What Can I Do with `WRS2`?
+
+`WRS2` covers a wide range of different functions:
+
+* Robust measures of central tendency (e.g., `winmean`, `mest`);
+* Robust measures of spread (e.g., `winvar`);
+* Robust standard errors (e.g., `winse`, `trimse`, `mestse`);
+* Robust mean comparisons (e.g., `yuen`, `t2way`);
+* Robust correlations (e.g., `wincor`, `pbcor`); 
+* Robust MANOVAs (e.g., `rmanova`, `rmanovab`); and
+* Robust tests of mediation (e.g., `ZYmediate`).
+
+These functions draw from a variety of equations that have been published in journal articles. For the curious, these are cited in the [`WRS2` documentation](https://cran.r-project.org/web/packages/WRS2/WRS2.pdf).
+
+## Putting the Package Into Practice
+
+### Let the Rubber Hit the Road
+
+Now that we have gotten all the boring stuff out of the way, let's take a few of the functions in `WRS2` out for a test drive!
+
+![](images/driver.jpg)
+
+For today's tutorial, we are going to take a look at the robust equivalent of an independent samples *t*-test and a Pearson's product-moment correlation. We'll start off with the alternative for the *t*-test. The function for this test in the `WRS2` package is `yuen`.
+
+### What in God's Name is a `yuen`??
+
+I'm sure that you may be wondering if "yuen" is a real word or if it is just a bunch of random letters. In fact, the `yuen` function is named after the Yuen's test created by - you guessed it - a statistician named Karen Yuen. 
+
+This test is based on trimmed means and is robust to unequal population variances (Yuen, 1974). In her paper, Yuen demonstrated via simulation that
+
+* The Yuen's test was approximately equivalent to the Student's *t*-test under conditions of normality; and
+* The Yuen's test outperformed the Student's *t*-test and the Welch's *t*-test when the underlying distribution was long-tailed (i.e., non-normal).
+
+All in all, I think we can say that Yuen's test meets our definition of a robust statistic.
+
+![](images/robust.png)
+
+### When Would We Use Yuen's Test?
+
+Another good question, and the answer is simple:
+
+**EVERY SINGLE TIME**
+
+The brilliant part of robust statistics is that they provide similar estimates to classical tests when assumptions are met. For those concerned about significance testing, using a robust statistical test results in a minimal loss of power when assumptions are not violated (Wilcox & Rousselet, 2018).
+
+Where robust statistics really shine is their performance when we have to deal with non-normality, heteroscedasticity, and the like. In these cases, robust statistics outperform their classical counterparts in terms of the accuracy of their estimates and their power to detect an effect. 
+
+![](images/race.png)
+
+## More Boring Theory, Liam - Seriously?
+
+Okay, I promise that was the end of the boring stuff. Let's actually test out `yuen` by creating a dataset - in particular, an ugly, gnarly dataset.
+
+### Dataset Simulation
+
+Given confidentiality concerns, we are going to simulate the data for today's tutorial. That being said, our examination of the simulated data will not be willy-nilly.
+
+![](images/willynilly.jpg)
+
+In fact, we are going to create a simulated dataset that closely mirrors many real-life examples.
+
+### Truth is Stranger than Fiction
+
+While classical methods were designed for beautiful, normal, well-behaved data, I am sure that we have all run into data that looks like this:  
+
+![](images/histogram1.png)
+
+And this:  
+
+![](images/histogram2.jpg)
+
+*Annddddd* this:
+
+![](images/unequalvariances.png)
+
+I certainly know that I have. Under these conditions, how confident are you that the assumptions of classical tests/models are met?
+
+![](images/noconfidence.gif)
+
+### Let's Get Simulatin`!
+
+We are going to use the `sn` and the `stfspack` packages to create our data. As these packages are not the focus of today's tutorial, I won't go too deeply into them. For now, I will mention that these packages provide additional tools to simulate data outside of base R. For more information on these packages, please see the links [here](https://cran.r-project.org/web/packages/sn/sn.pdf) and [here](https://rdrr.io/github/mdedge/stfspack/), respectively.
+
+Given that we are going to be performing a robust *t*-test, we will need data for two groups. For the first group, I will be using the `rsn` function from the `sn` package to randomly sample 200 observations from a positively skewed distribution. I have also created an ID variable and a group variable.
+
+```{r group-1-sim}
+set.seed(128)
+
+group1 <- tibble(
+  id = 1:200,
+  group = as.factor(rep("Group One", times = 200)),
+  score = rsn(n = 200, xi = 10, omega = 5, alpha = 100)
+  )
+```
+
+For the second group, I will be using the `rnorm.contam` function from `stfspack` to randomly sample 200 observations from a normal distribution that is contaminated with positive outliers. Again, I have accompanied these scores with an ID and a group variable.
+
+```{r group-2-sim}
+
+set.seed(124)
+
+group2 <- tibble(
+  id = 201:400,
+  group = as.factor(rep("Group Two", times = 200)),
+  score = rnorm.contam(n = 200,
+                    mu = 14,
+                    sigma = 4,
+                    contam.p = 0.10,
+                    contam.mu = 30,
+                    contam.sigma = 3))
+```
+
+Now, let's combine these datasets.
+
+```{r create-data}
+yuen <- rbind(group1, group2)
+```
+
+## Get to the Plotta'
+
+Being the good scientists that we are, let's take some time to explore our data using plots and graphs.
+
+![](images/arnold.jpg)
+
+\ Let's start off by examining some histograms of the score distributions for each group. To do this, we will make use of our `ggplot2` skills.
+
+
+```{r histograms, echo=FALSE}
+ggplot(yuen, aes(score)) +
+  geom_histogram(binwidth = 1,
+                 colour = "black",
+                 fill = "burlywood1",
+                 alpha = .4) +
+  facet_grid(cols = vars(group)) +
+  labs(x = "Score",
+       y = "Count",
+       title = "Histograms of Score Distributions",
+       subtitle = "Drawn from Simulated Data") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+We can clearly see that the data from group 1 is positively skewed with a dense concentration of scores around 10-15. We can also see some outliers lying along the tail.
+
+The histogram for group 2 indicates that the distribution is relatively normal, but that there are outliers on either side of the distribution. In particular, there are a fair number of positive outliers grouped around a score of ~30.
+
+Now, let's generate some boxplots to compare the distributions from another perspective.
+
+
+```{r boxplots, echo=FALSE}
+ggplot(yuen, aes(group, score, fill = group)) +
+  geom_boxplot(colour = "black", 
+               alpha = .5) +
+  labs(x = "Group",
+       y = "Score",
+       title = "Boxplots of Score Distributions",
+       subtitle = "Drawn from Simulated Data") +
+  scale_fill_discrete(labels = c("Group 1", "Group 2")) +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+Given the relative length of the whiskers and the number of outliers in group 2, it's likely that the variances between the two groups are quite different. Let's make a jitter plot to get a better look.
+
+
+```{r jitter-plots, echo=FALSE}
+ggplot(yuen, aes(group, score, color = group)) +
+  geom_jitter(alpha = .7,
+              width = .1) +
+  labs(x = "Group",
+       y = "Score",
+       title = "Jitter Plots of Score Distributions",
+       subtitle = "Drawn from Simulated Data") +
+  scale_color_discrete(labels = c("Group 1", "Group 2")) +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+Yep - seems like a pretty big difference in spread!
+
+Overall, these distributions seem perfect for a robust test - we can see violations of normality and homoscedasticity just from a brief look at the data.
+
+### Serving Tables
+
+Before we get into the interesting stuff, let's make a table and get a bit of an overview of what the descriptive statistics for each group look like.
+
+
+```{r descriptives-table, echo=FALSE}
+yuen_sum <- yuen %>% 
+  select(group, score) %>% 
+  group_by(group) %>% 
+  summarise(mean = mean(score),
+            trimmed_mean = mean(score, trim = 0.2),
+            median = median(score),
+            range = max(score) - min(score),
+            sd = sd(score),
+            mad = mad(score))
+
+gt(yuen_sum) %>% 
+  tab_header(
+    title = md("**Summary Statistics for Scores by Group**"),
+    subtitle = md("*Drawn from Simulated Data*")
+  ) %>% 
+  cols_label(
+    group = md("**Group**"),
+    mean = md("**Mean**"),
+    trimmed_mean = md("**Trimmed Mean**"),
+    median = md("**Median**"),
+    range = md("**Range**"),
+    sd = md("**Standard Deviation**"),
+    mad = md("**Mdn. Abs. Deviation**")
+  ) %>% 
+  tab_source_note(source_note = md("*N* is equal to 200 for each group."))
+```
+
+
+Interesting. We can see that the estimates using the arithmetic mean appear to be biased, as indicated by the difference between the arithmetic mean and the trimmed mean and median. Once again, we can also see that the spread of the data is quite different for each group - the ranges and standard deviations differ quite substantially. The median absolute deviation has been provided as a robust alternative to the standard deviation and is a better representation.
+
+## Let's Get Robustin'
+
+![](images/caesar.jpg)
+
+\ *Et tu, Brutus?*
+
+Now that we have gotten the boring part over with, let's get down to some inferential testing!
+
+### Independent Samples *t*-test
+
+As a metric for comparison, let's start by running the Student's *t*-test. We will use Cohen's *d* with a pooled standard deviation to express the magnitude of the effect of group on scores.
+
+
+```{r student}
+student_t <- t.test(var.equal = TRUE, score ~ group, data = yuen)
+
+student_t
+
+cohens_d(score ~ group, data = yuen, pooled_sd = TRUE, ci = .95)
+```
+
+
+Now, let's use the Welch's *t*-test, which uses a *df* adjustment to account for unequal variances.
+
+
+```{r welch}
+welchs_t <- t.test(var.equal = FALSE, score ~ group, data = yuen)
+
+welchs_t
+
+cohens_d(score ~ group, data = yuen, pooled_sd = TRUE, ci = .95)
+```
+
+
+Notice, however, that the Welch's *t*-test still uses the arithmetic mean. The mean is easily influenced by outlying values as it has the lowest finite breakdown point of any measure of central tendency.
+
+Time for the good stuff - let's try Yuen's test! Instead of using Cohen's *d*, let's use the [robust effect size](https://uh.edu/~ttian/ES.pdf) for group comparisons (Wilcox & Tian, 2011). 
+
+
+```{r yuen}
+yuens_t <- yuen(score ~ group, data = yuen, tr = 0.2)
+
+yuens_t
+```
+
+
+If we want to get really fancy, we can even use the bootstrapped Yuen's test which is even more robust as it is based off an empirically-derived distribution! We can even bootstrap the robust effect size used previously.
+
+
+```{r yuenbt}
+yuenbt(score ~ group, data = yuen, tr = 0.2, nboot = 5000)
+
+yuen.effect.ci(score ~ group, data = yuen, tr = 0.2, nboot = 5000)
+```
+
+
+Let's compare all of these tests in one table.
+
+
+```{r summary-table, echo=FALSE}
+t_test_table <- tibble(
+  test_method = c("Student's t-test", "Welch's t-test", "Yuen's Test", "Bootstrapped Yuen's Test"),
+  test_statistic = c(-3.23, -3.23, -3.37, -3.38),
+  df = c(398, 313.82, 202.57, NA),
+  p_value = c(.001, .001, .001, .001),
+  mean_difference = c(-1.471, -1.471, -1.360, -1.360),
+  md_ci = c("[-2.367, -0.573]", "[-2.368, -0.573]", "[-2.155, -0.565]", "[-2.141, -0.579]"),
+  effect_size = c(-0.323, -0.323, 0.250, 0.248),
+  es_ci = c("[-0.520, -0.125]", "[-0.520, -0.125", "NA", "[0.105, 0.384]")
+)
+
+gt(t_test_table) %>% 
+  tab_header(
+    title = md("**Comparison of Independent Samples *t*-tests**")
+  ) %>% 
+  cols_label(
+    test_method = md("**Test Method**"),
+    test_statistic = md("**Test Statistic**"),
+    df = md("**df**"),
+    p_value = md("***p*-value**"),
+    mean_difference = md("**Mean Diff.**"),
+    md_ci = md("**95% CI**"),
+    effect_size = md("**Effect Size**"),
+    es_ci = md("**95% CI**")
+  ) %>% 
+  cols_align(
+    align = "center",
+  ) %>% 
+  cols_align(
+    align = "left",
+    columns = "test_method"
+  )
+```
+
+
+In this case, the results of all four tests lead us to the same conclusion. That being said, the point estimate of the mean difference and the confidence intervals derived for this statistic are more precise when using the Yuen's test.
+
+![](images/bigbrain.jpg)
+
+
+## Review
+
+### Now You Try!
+
+```{r review-data, echo=FALSE}
+set.seed(24)
+
+review_1 <- tibble(
+  id = 1:100,
+  group = as.factor(rep("Martians", times = 100)),
+  iq_score = rnorm.contam(n = 100,
+                    mu = 90,
+                    sigma = 15,
+                    contam.p = 0.10,
+                    contam.mu = 120,
+                    contam.sigma = 5))
+
+review_2 <- tibble(
+  id = 101:200,
+  group = as.factor(rep("Mercurians", times = 100)),
+  iq_score = rnorm.contam(n = 100,
+                    mu = 100,
+                    sigma = 15,
+                    contam.p = 0.10,
+                    contam.mu = 65,
+                    contam.sigma = 5))
+
+review <- rbind(review_1, review_2)
+```
+
+```{r review-histograms, echo=FALSE}
+review %>% 
+  ggplot(aes(iq_score)) +
+  geom_histogram(binwidth = 2.5,
+                 fill = "cadetblue",
+                 colour = "black",
+                 alpha = .3) +
+  facet_grid(vars(group)) +
+  labs(x = "IQ Score",
+       y = "Count",
+       title = "IQ Scores of Martians and Mercurians") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggplot(review, aes(group, iq_score, fill = group)) +
+  geom_boxplot(colour = "black", 
+               alpha = .3) +
+  labs(x = "Group",
+       y = "Score",
+       title = "IQ Scores of Martians and Mercurians") +
+  scale_fill_manual(values = c("firebrick", "thistle")) +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+I have generated another dataset called `review` for you to test your own skills on! A sample of aliens from Mars (group 1) and from Mercury (group 2) completed a human IQ test. Above are the histograms and boxplots for the two groups. For this task, I would like you to compare the use of the `t.test()` function with the `yuen` function when examining group differences on IQ scores. The independent variable is `group` and the dependent variable is `iq_score`. The dataset is called `review`. If you're stuck, click on the little "Hint" button for help!
+
+
+```{r yuen-learner, exercise=TRUE, exercise.eval=TRUE}
+
+
+
+
+
+```
+
+```{r yuen-learner-hint}
+# t.test(formula, data)
+# yuen(formula, data, tr = 0.2)
+# Remember that formulas are expressed in the same manner as the "regressed on" language. For instance, score ~ group is like saying score is regressed on (or predicted by) group. For the "data" line, put the name of the dataset after "data =". Lastly, the "tr =" argument dictates the percentage of observations that will be trimmed from each side of the score distribution.
+```
+
+
+## Robustin' Round 2
+
+Now that we have taken a look at the robust alternative to the independent samples *t*-test, let's check out the robust alternative to Pearson's product-moment correlation. We'll repeat the same process: simulate data, explore it via graphs and tables, and then get down to some inferential testing.
+
+### Lost in the Simulation
+
+![](images/redpill.gif)
+
+
+*Note: To clarify, I'm a big fan of the Matrix - not weirdos on the Internet.*
+
+Again, we're going to simulate some data to test out the difference between the Pearson's product-moment correlation and robust correlation coefficients. While our last set of simulated data used a dicohotomous variable and a continuous variable, our new set of simulated data will have two continuous variables. Let's get simulatin'!
+
+For our variables, we are going to simulate data sampled from two normally distributed variables. To make it interesting, however, we will be adding outliers on opposite sides of each distribution. As we did before, we will using the `rnorm.contam()` function to create these distributions.
+
+For our variables, we are going to simulate data sampled from a skewed multivariate distribution. To do so, we are going to use our old friend `sn`. This time around, however, we are going to use `rmsn` function which lets us randomly sample data from a multivariate skewed distribution. 
+
+
+We are also going to make use of a package called `MASS`, which is another groovy package with a number of functions that can be used by researchers. Although this package was written as a supplement for a textbook, the functions can easily be co-opted for our use here.
+
+```{r robust-correlation-data}
+set.seed(9)
+
+xi <- c(0.5, -1) # this vector will set the location parameter (i.e., mean) for the distribution
+
+Omega <- diag(2) # this sets the diagonals of our population correlation matrix to 1
+
+Omega[2, 1] <- Omega[1, 2] <- 0.30 # this defines the population correlation between our two variables
+
+alpha <- c(2, -5) # this defines the degree of skewness in the multivariate distribution
+
+sim_data <- as.tibble(rmsn(100, xi, Omega, alpha)) # this simulates the data for variable 1 and variable 2 in order to create our multivariate distribution - I have forced this to be a tibble to make graphing/manipulating easier in the future
+
+robust_cor <- tibble(
+  id = 1:100,
+  var_1 = sim_data$V1,
+  var_2 = sim_data$V2
+) # just pulling these two variables apart and adding an ID variable
+```
+
+### Dora the Data Explorer
+
+![](images/cooldora.jpeg)
+
+
+Let's check out what the distributions look like for `var_1` and `var_2`. We'll start with ol' reliable - the histogram.
+
+
+```{r histogram-robust-correlation, echo=FALSE}
+ggplot(robust_cor, aes(var_1)) +
+  geom_histogram(binwidth = .25,
+                 colour = "black",
+                 fill = "peachpuff",
+                 alpha = .9) +
+  labs(x = "Score",
+       y = "Count",
+       title = "Histogram of Variable 1",
+       subtitle = "Drawn from Simulated Data, Round 2") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggplot(robust_cor, aes(var_2)) +
+  geom_histogram(binwidth = .25,
+                 colour = "black",
+                 fill = "darkolivegreen1",
+                 alpha = .5) +
+  labs(x = "Score",
+       y = "Count",
+       title = "Histogram of Variable 2",
+       subtitle = "Drawn from Simulated Data, Round 2") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+To mix things up, let's generate a violin plot!
+
+
+```{r violin-robust-correlation, echo=FALSE}
+ggplot(robust_cor, aes("", var_1)) +
+  geom_violin(scale = "area",
+              colour = "black",
+              fill = "peachpuff",
+              alpha = .4) +
+  labs(x = "Variable 1",
+       y = "Score",
+       title = "Violin Plot of Variable 1",
+       subtitle = "Drawn from Simulated Data, Round 2") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggplot(robust_cor, aes("", var_2)) +
+  geom_violin(scale = "area",
+              colour = "black",
+              fill = "darkolivegreen1",
+              alpha = .4) +
+  labs(x = "Variable 2",
+       y = "Score",
+       title = "Violin Plot of Variable 2",
+       subtitle = "Drawn from Simulated Data, Round 2") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+The univariate distributions certainly aren't great, but they're not the worst I have ever seen. Let's take a look at a scatterplot to see what the general relationship is between these two variables.
+
+
+```{r scatterplot-robust-correlation, echo=FALSE}
+ggplot(robust_cor, aes(var_1, var_2)) +
+  geom_point(alpha = .4,
+             color = "black") +
+  geom_smooth(method = lm) +
+  labs(x = "Variable 1",
+       y = "Variable 2",
+       title = "Scatterplot of Variables 1 and 2",
+       subtitle = "Drawn from Simulated Data, Round 2") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+We know what our population correlation is (*r* = 0.30) Let's investigate whether our sample correlation is accurately estimates this parameter!
+
+## Sherlock Holmes and the Tale of the Skewed Data
+
+![](images/sherlock.jpg)
+
+
+Why should our correlation in our sample differ from our population parameter? One explanation is that we have data points that are biasing the linear model. Given what we know about the limitations of the linear model, it may be that a robust method would function better in this dataset. To find out, let's establish our baseline: the Pearson product-moment correlation. We will use the `cor.test()` function to calculate this parameter estimate. To make my life easier, I will also be using the `report` function from the `report` package to print a statement that summarizes the result of this inferential test.
+
+```{r pearson-product-moment}
+pearson <- cor.test(robust_cor$var_1, robust_cor$var_2)
+
+report(pearson)
+```
+
+Cool, eh? What could be even cooler than automatic reporting of test statistics? You guessed it.
+
+*Robust correlations.*
+
+
+![](images/bernie.jpg)
+
+
+Let's get crack-a-lackin'. We have two options via `WRS2`:
+
+* `pbcor()` - the percentage bend correlation
+* `wincor()` - the Winsorized correlation
+
+These functions take slightly different arguments, which we will explore below. To start, we will use `pbcor()`.
+
+`pbcor()` takes the following form: 
+
+* `pbcor(x, y, beta = 0.2, ci = FALSE, nboot = 500, alpha = 0.05)`
+
+The inputted values are defaults but can be edited. `x` and `y` are our specified values. `ci` determines if a confidence interval of the correlation will be printed. `nboot` determines the number of bootstrapped samples that will be generated. `alpha` specifies the alpha level for the related CI (i.e., alpha = .05 -> 95% CI). The only argument you are likely unfamiliar with is `beta`. This specifies the bending constant. We'll stick with the default for now. 
+
+```{r pbcor}
+set.seed(1)
+
+pb <- pbcor(robust_cor$var_1, robust_cor$var_2, beta = 0.2, ci = TRUE, nboot = 5000, alpha = 0.05)
+
+pb
+```
+
+Our second option is the `wincor()` function. `wincor()` takes the following form:
+
+* `wincor(x, y, tr = 0.2, ci = FALSE, nboot = 500, alpha = 0.05)`
+
+The only difference between the arguments in this function and those in `pbcor()` is the absence of the `beta` argument and its replacement with the `tr` argument. The `tr` argument specifies the amount of Winsorization (e.g., 20% of the data on each side of the distribution is Winsorized). Again, we'll stick with the default for this demonstration.
+
+```{r wincor}
+set.seed(2)
+
+win <- wincor(robust_cor$var_1, robust_cor$var_2, tr = 0.2, ci = TRUE, nboot = 5000, alpha = 0.05)
+
+win
+```
+
+
+### Summary Table
+
+Given all of these tests, let's examine our results.
+
+```{r correlation-table, echo=FALSE}
+correlation_table <- tibble(
+  test_method = c("Pearson Correlation", "Percentage Bend Correlation", "Winsorized Correlation"),
+  correlation = c(0.49, 0.42, 0.39),
+  test_statistic = c(5.50, 4.63, 4.16),
+  p_value = c("< .001", "< .001", "< .001"),
+  ci = c("[0.32, 0.62]", "[0.25, 0.59]", "[0.20, 0.55]")
+)
+
+gt(correlation_table) %>% 
+  tab_header(
+    title = md("**Comparison of Correlation Coefficients**")
+  ) %>% 
+  cols_label(
+    test_method = md("**Test Method**"),
+    correlation = md("**Correlation Coefficient**"),
+    test_statistic = md("**Test Statistic**"),
+    p_value = md("***p*-value**"),
+    ci = md("**95% CI**")
+  ) %>% 
+  cols_align(
+    align = "center",
+  ) %>% 
+  cols_align(
+    align = "left",
+    columns = "test_method"
+  )
+```
+
+
+As you can see, our robust correlations are actually better representations of the parameter. In addition, inspection of the 95% CIs tell us that (a) the CI for the Pearson correlation does not include the population parameter and (b) the CIs for our robust correlation coefficients are more precise (i.e., .30 range vs .24/.25 range).
+
+## Review, Número Dos
+
+### Now You Try!
+
+```{r review-data-2, echo=FALSE}
+set.seed(6)
+
+review_3 <- tibble(
+  id = 1:100,
+  var_1 = rnorm(100, mean = 25, sd = 1.5),
+  var_2 = rnorm(100, mean = 50, sd = 3)
+)
+
+```
+
+```{r review-plots, echo=FALSE}
+ggplot(review_3, aes(var_1)) +
+  geom_histogram(binwidth = 1,
+                 colour = "black",
+                 fill = "lavenderblush",
+                 alpha = .9) +
+  labs(x = "Score",
+       y = "Count",
+       title = "Histogram of Variable 1",
+       subtitle = "Simulated Review Data") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggplot(review_3, aes(var_2)) +
+  geom_histogram(binwidth = 1,
+                 colour = "black",
+                 fill = "seagreen",
+                 alpha = .5) +
+  labs(x = "Score",
+       y = "Count",
+       title = "Histogram of Variable 2",
+       subtitle = "Simulated Review Data") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggplot(review_3, aes(var_1, var_2)) +
+  geom_point(alpha = .4,
+             color = "black",
+             fill = "turquoise"
+             ) +
+  geom_smooth(method = lm) +
+  labs(x = "Variable 1",
+       y = "Variable 2",
+       title = "Scatterplot of Variables 1 and 2",
+       subtitle = "Drawn from Simulated Data, Round 2") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+
+Here's another opportunity for you to flex your statistical muscles - show me what you can do! Our dataset is called `review_3` and our two variables of interest are `var_1` and `var_2`. Now that you have seen `cor.test()`, `pbcor()`, and `wincor()` in action, give it a go yourself and see how the results match up! If you zoned out during that part of the tutorial, don't worry about it - click on the hint for a reminder of how to use the functions/arguments.
+
+
+```{r robust-cor-learner, exercise=TRUE, exercise.eval=TRUE}
+
+
+
+
+
+```
+
+```{r robust-cor-learner-hint}
+# cor.test(data$var1, data$var2)
+# pbcor(data$var1, data$var2, beta = 0.2, ci = FALSE, nboot = 500, alpha = 0.05)
+# wincor(data$var1, data$var2, tr = 0.2, ci = FALSE, nboot = 500, alpha = 0.05)
+```
+
+## Conclusion
+
+### The Importance of Robust Statistics
+
+While the creation of classical statistical methods propelled science forward, there is an overwhelming amount of evidence that suggests that these methods have limitations (Wilcox, 2010). In particular, classical statistical methods are founded on a series of stringent assumptions (e.g., normality, homoscedasticity). When these assumptions are not met, classical statistical methods produce parameter estimates that are biased and not necessarily reflective of the underlying population.
+
+In practice, many of the datasets that we deal with do not meet the assumptions of classical statistical methods. Further, the entreaty to rely on the central limit theorem has been shown to be problematic in several respects (Wilcox, 2010). For instance, the underlying distribution that observations are sampled from can have a significant influence on how well the normal curve approximates the sampling distribution.
+
+Given our reliance on statistical methods to test theories and hypotheses, it is incumbent upon us to follow the best practices established by contemporary statisticians. Among these best practices are the routine institution of robust statistics as a complement to classical statistical methods. As mentioned, these two approaches converge to the point of near-equivalence when assumptions are met. When estimates diverge, however, we should think carefully about our results to consider *why* these estimates differ.
+
+### But Liam - How Can We Do Things Like Trim Means???
+
+While we should *always* think about the meaning of *why* our data does not meet the assumptions of classical test methods, we should also think about the underlying purpose of statistical measures and models. These measures and models are *nomothetic* tools that attempt to describe the *bulk of the data* or *the average respondent*. They are not the kinds of tools we want to use if we are interested in learning about individual data points (note: qualitative methods may be more helpful for this).
+
+Let's use an example to demonstrate. Imagine that we were interested in the average lottery earnings of people who have purchased scratch tickets. The prizes for these scratch tickets ranges from `$3` to `$3,000,000`. As in real life, the former is much, much more common than the latter. We sample 100 people from Ontario and ask them about the amount of money they have received from scratch tickets. While most people seem to have made between `$0` and `$50` from scratch tickets, we find out that - holy schmokes - we have sampled one of the big-time winners!
+
+
+```{r lottery-data, echo=FALSE}
+lottery <- tibble(
+  lottery_earnings = c(rep(0, times = 10), rep(c(3, 5), times = 15), rep(10, times = 20), rep(c(15, 20,  25, 35), times = 5), rep(40, times = 10), rep(50, times = 9), 3000000)
+)
+
+ggplot(lottery, aes("", lottery_earnings)) +
+  geom_boxplot(colour = "black") +
+  theme_apa() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+Because of how high that single score is, we can't even get a good idea of the remaining distribution. Let's try pushing it inwards so we can create a histogram to represent our data.
+
+
+```{r lottery-histogram, echo=FALSE}
+lottery %>% 
+  mutate(earnings_new = ifelse(lottery_earnings > 100, 100, lottery_earnings)) %>%
+  ggplot(aes(earnings_new)) +
+  geom_histogram(binwidth = 10,
+                 col = "black",
+                 fill = "cornflowerblue",
+                 alpha = .4)
+```
+
+
+![](images/chance.jpg)
+
+
+Now, let's use the mean to examine the average lottery earnings in our sample. Remember that the mean is a *measure of central tendency* that is designed to be *representative of typical values in the data*. 
+
+
+```{r lottery-means}
+mean(lottery$lottery_earnings)
+```
+
+
+So, according to our mean, the average lottery earnings of people who have purchased scratch tickets is roughly `$30,000`.
+
+Is this realistic?
+
+In actuality, this does a poor job of describing the typical value for average lottery earnings. It also does a poor job of describing the value for the (very, very) small group of individuals who win big.
+
+In other words, it's kaka. Doodoo. Crap. Rubbish.
+
+
+![](images/kaka.jpeg)
+
+
+Now, let's try using two more robust measures of central tendency - the median and the trimmed mean.
+
+
+```{r}
+median(lottery$lottery_earnings)
+
+mean(lottery$lottery_earnings, tr = 0.2)
+```
+
+
+Don't these seem like more realistic estimates of average lottery earnings in the population? The median, in this case, is actually preferable as it better accounts for the skew in the distribution. 
+
+## Pop Quiz
+
+Quiz time! Hope you paid attention during this tutorial. If not, no worries - you can always scroll back to double-check!
+
+```{r quiz, echo=FALSE}
+quiz(
+  question("What measure of central tendency does Yuen's test compare groups on?",
+    answer("Median"),
+    answer("Trimmed Mean",  correct = TRUE),
+    answer("Huber M-Estimator"),
+    answer("Absolute Deviation")
+  ),
+  question("What kinds of issues can robust methods help us deal with?",
+    answer("Heteroscedasticity"),
+    answer("Non-normality"),
+    answer("Small sample sizes"),
+    answer("Outliers"),
+    answer("All of the above",  correct = TRUE)
+  ),
+  question("When robust statistics are used on data that meets the assumptions of classical tests, what occurs?",
+    answer("While there is a sizeable drop in power, Type I errors are reduced in comparison to classical tests"),
+    answer("Both the power to detect an effect and the likelihood of a false positive (i.e., Type I error) are increased"),
+    answer("Nominal Type I error rates are maintained and there is a negligible loss of power", correct = TRUE),
+    answer("Estimates derived from both robust and classical methods are roughly equivalent", correct = TRUE)
+  ),
+  question("Which of the R packages listed below can be used for robust statistics?",
+    answer("lattice"),
+    answer("stfstools"),
+    answer("stats"),
+    answer("WRS2", correct = TRUE)
+  ),
+  question("As discussed in today's tutorial, what kinds of parameter estimates can robust statistics be used for?",
+    answer("estimates of central tendency"),
+    answer("estimates in scale"),
+    answer("coefficient estimates"),
+    answer("All of these and more!!", correct = TRUE)
+))
+```
+
+## Resources for Learning More
+
+There are quite a few places to learn about this package and about the developing field of robust statistics.
+
+### `WRS2`
+
+To learn specifically about the `WRS2` package, an excellent place to start would be the [documentation](https://cran.r-project.org/web/packages/WRS2/WRS2.pdf) for the package and the accompanying [vignettes](https://cran.r-project.org/web/packages/WRS2/vignettes/WRS2.pdf). The authors of the package also published a journal article about WRS2 and the use of robust statistics in the [*Journal of Statistical Software*](https://dornsife.usc.edu/assets/sites/239/docs/WRS2.pdf). 
+
+### Robust Statistics
+
+#### Books and Journal Articles
+
+One of the authors of the `WRS2` package, Rand Wilcox, is one of the most influential advocates for the widespread adoption of robust statistical methods. His [homepage](https://dornsife.usc.edu/labs/rwilcox/http-college-usc-edu-labs-rwilcox-home/) at the University of Southern California has a comprehensive list of the work that he has done on this topic. If you like numbers and complicated formulas, these articles will get you fired up!
+
+![](images/wilcox.jpg)
+
+
+*A real photo of Dr. Wilcox*
+
+For readers who would prefer a more gentle introduction to these ideas, Wilcox has two more user-friendly books that provide a theoretical overview of the ideas that underpin robust statistical methods as well as some practical uses. 
+
+For a book that focuses more on theory, be sure to check out [*Fundamentals of Modern Statistical Methods: Substantially Improving Power and Accuracy*](https://www.springer.com/gp/book/9781441955241). I have a copy of this book, and I have thoroughly enjoyed what I have read of it. I am a bit of a stats geek, but I am sure that the more math-inclined students will get a kick out of it!
+
+For a book with a more pragmatic bent, check out [*Understanding and Applying Basic Statistical Methods Using R*](https://www.wiley.com/en-us/Understanding+and+Applying+Basic+Statistical+Methods+Using+R-p-9781119061397). This book covers both classical and contemporary statistical methods in R and is an excellent resource for building your statistical knowledge and R abilities. It should be noted that this book also covers several topics relevant to the [New Statistics](https://journals.sagepub.com/doi/10.1177/0956797613504966) approach, such as the calculation of effect sizes and confidence intervals in R.
+
+#### YouTube Videos
+
+A great way to get more acquainted with the concepts underlying robust statistics is to check out resources on YouTube. Below are some good videos to whet your appetite:
+
+- [A Brief Introduction to Robust Statistics](https://www.youtube.com/watch?app=desktop&v=PaRZge3njm4) (11 mins)
+- [Robust Estimation](https://www.youtube.com/watch?app=desktop&v=AVDySygkMhM) (20 mins)
+- [What is Robustness? How to Do Robustness in R](https://www.youtube.com/watch?v=BwH945JdD90) (38 mins)
+
+## Resources That I Found Helpful
+
+To create this presentation, I leaned quite heavily on the following resources:
+
+- [Interactive Tutorials for R](https://rstudio.github.io/learnr/)
+- [Documentation for `learnr`](https://cran.r-project.org/web/packages/learnr/learnr.pdf)
+- [Interactive R tutorials with `learnr`](https://www.youtube.com/watch?v=gwu63_WO7O8)
+- [Documentation for `jtools`](https://cran.r-project.org/web/packages/jtools/jtools.pdf)
+- [Documentation for `gt`](https://cran.r-project.org/web/packages/gt/gt.pdf)
+- [Stack Exchange - Generating Random Skewed Distributions](https://math.stackexchange.com/questions/17813/how-can-we-generate-random-numbers-using-skew-normal-distribution-in-multivariat)
+- [Documentation for `sn`](https://cran.r-project.org/web/packages/sn/sn.pdf)
+- ["rdrr.io" page for `stfspack`](https://rdrr.io/github/mdedge/stfspack/)
+- [Documentation for `effectsize`](https://cran.r-project.org/web/packages/effectsize/effectsize.pdf)
+- [Documentation for `ggplot2`](https://ggplot2.tidyverse.org/reference/)
+- [Documentation for the `report` package](https://www.rdocumentation.org/packages/report/versions/0.1.0)
+- [Tutorial for conducting Pearson product-moment correlation using `cor()` and `cor.test()`](https://statsandr.com/blog/correlation-coefficient-and-correlation-test-in-r/#between-two-variables)
+
+I also made use of the `WRS2` resources listed previously as well as my print copy of *Fundamentals of Modern Statistical Methods*.
+
+The following journal articles and books were also quite helpful. While I did not understand some of the more technical bits (e.g., some of the equations), there were still some helpful nuggets of information.
+
+* Avella-Medina, M. (2020). The Role of Robust Statistics in Private Data Analysis. CHANCE, 33(4), 37–42. https://doi.org/10.1080/09332480.2020.1847958
+* Erceg-Hurn, D. M., & Mirosevich, V. M. (2008). Modern robust statistical methods: An easy way to maximize the accuracy and power of your research. American Psychologist, 63(7), 591–601. https://doi.org/10.1037/0003-066X.63.7.591
+* Field, A. P. (2017). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE Publications, Inc.
+* Field, A. P., & Wilcox, R. R. (2017). Robust statistical methods: A primer for clinical psychology and experimental psychopathology researchers. Behaviour Research and Therapy, 98, 19–38. https://doi.org/10.1016/j.brat.2017.05.013
+* Foldnes, N., & Olsson, U. H. (2016). A Simple Simulation Technique for Nonnormal Data with Prespecified Skewness, Kurtosis, and Covariance Matrix. Multivariate Behavioral Research, 51(2–3), 207–219. https://doi.org/10.1080/00273171.2015.1133274
+* Frey, B. B. (2018). The SAGE Encyclopedia of Educational Research, Measurement, and Evaluation. In Technometrics (Vol. 24, Issue 2). SAGE Publications, Inc. https://doi.org/10.4135/9781506326139
+* Wilcox, R. R., & Rousselet, G. A. (2018). A Guide to Robust Statistical Methods in Neuroscience. Current Protocols in Neuroscience, 82(1), 8.42.1-8.42.30. https://doi.org/10.1002/cpns.41
+* Wilcox, R. R., & Tian, T. S. (2011). Measuring effect size: a robust heteroscedastic approach for two or more groups. Journal of Applied Statistics, 38(7), 1359–1368. https://doi.org/10.1080/02664763.2010.498507
+* Yuen, K. K. (1974). The two-sample trimmed t for unequal population variances. Biometrika, 61(1), 165–170. https://doi.org/10.1093/biomet/61.1.165
+
