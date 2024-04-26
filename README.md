@@ -8,7 +8,18 @@ Code underlying the Shiny App found at https://ld19rk.shinyapps.io/WRS2/.
 - [Notes](#notes)
 
 ## About
-For the second study of my dissertation, I was interested in the relationship between psychopathy and success in the Prisoner's Dilemma Game (PDG) under various conditions. In the first study of my dissertation, I conducted a meta-analysis examining (among other things) the nascent literature on this topic. Based on these empirical findings and theory, I identified three potentially relevant moderators: opponent strategy, match length, and *k*-index of the PDG. To examine the effect of these moderators, I identified several proxy strategies for psychopathy (i.e., Defector, AntiTitForTat, and TrickyCooperator) and simulated 200 matches for each interacting condition. Stochastic noise was added to the model to increase the generalizability of the simulation to experimental research. Further details can be gleaned from the Python script. 
+
+In my first year of my Ph.D., I completed the course PSYC 7V08: Using *R* for Reproducible Research (Brock University). The culminating project required students to create a tutorial for a package of their choice and deliver a presentation on this package to the class. I chose to create a Shiny App (https://ld19rk.shinyapps.io/WRS2/) that provides a tutorial on the *WRS2* package. This package centres around robust statistics, which enable the user to circumvent common obstacles in statistical analysis (e.g., outliers, skewed distributions) and estimate more accurate parameters than traditional methods. Example functions include robust alternatives to common statistical tests (e.g., independent samples *t*-tests). 
+
+The tutorial provides the reader with the following:
+
+* a brief walkthrough of general principles in robust statistics,
+* examples of common functions on simulated data,
+* interactive coding exercises,
+* a multiple-choice pop-quiz,
+* resources for further reading/viewing.
+
+This repository contains the Markdown file with the code underlying the Shiny App tutorial.
 
 ## Installation
 
